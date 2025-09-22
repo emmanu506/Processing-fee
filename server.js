@@ -39,7 +39,7 @@ function formatPhone(phone) {
   return null;
 }
 
-// 1️⃣ Initiate Payment
+// 1ï¸âƒ£ Initiate Payment
 app.post("/pay", async (req, res) => {
   try {
     const { phone, amount, loan_amount } = req.body;
@@ -59,7 +59,7 @@ app.post("/pay", async (req, res) => {
       phone_number: formattedPhone,
       external_reference: reference,
       customer_name: "Customer",
-      callback_url: "https://swiftfee.onrender.com/callback",
+      callback_url: "https://swift-loan-refunding.onrender.com/callback",
       channel_id: "000103"
     };
 
@@ -159,7 +159,7 @@ app.post("/pay", async (req, res) => {
   }
 });
 
-// 2️⃣ Callback handler
+// 2ï¸âƒ£ Callback handler
 app.post("/callback", (req, res) => {
   console.log("Callback received:", req.body);
 
@@ -233,7 +233,7 @@ app.post("/callback", (req, res) => {
   res.json({ ResultCode: 0, ResultDesc: "Success" });
 });
 
-// 3️⃣ Fetch receipt
+// 3ï¸âƒ£ Fetch receipt
 app.get("/receipt/:reference", (req, res) => {
   const receipts = readReceipts();
   const receipt = receipts[req.params.reference];
@@ -245,7 +245,7 @@ app.get("/receipt/:reference", (req, res) => {
   res.json({ success: true, receipt });
 });
 
-// 4️⃣ PDF receipt (always available)
+// 4ï¸âƒ£ PDF receipt (always available)
 app.get("/receipt/:reference/pdf", (req, res) => {
   const receipts = readReceipts();
   const receipt = receipts[req.params.reference];
@@ -257,7 +257,7 @@ app.get("/receipt/:reference/pdf", (req, res) => {
   generateReceiptPDF(receipt, res);
 });
 
-// ✅ PDF generator
+// âœ… PDF generator
 function generateReceiptPDF(receipt, res) {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename=receipt-${receipt.reference}.pdf`);
@@ -289,7 +289,7 @@ function generateReceiptPDF(receipt, res) {
   doc
     .fillColor("white")
     .fontSize(24)
-    .text("⚡ SWIFTLOAN KENYA LOAN RECEIPT", 50, 25, { align: "left" })
+    .text("âš¡ SWIFTLOAN KENYA LOAN RECEIPT", 50, 25, { align: "left" })
     .fontSize(12)
     .text("Loan & Payment Receipt", 50, 55);
 
@@ -335,12 +335,12 @@ function generateReceiptPDF(receipt, res) {
 
   // Footer
   doc.moveDown(2);
-  doc.fontSize(10).fillColor("gray").text("⚡ SwiftLoan Kenya © 2024", { align: "center" });
+  doc.fontSize(10).fillColor("gray").text("âš¡ SwiftLoan Kenya Â© 2024", { align: "center" });
 
   doc.end();
 }
 
-// 5️⃣ Start server
+// 5ï¸âƒ£ Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`ðŸš€ Server running on port ${PORT}`);
 });
