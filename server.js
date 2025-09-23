@@ -80,7 +80,7 @@ app.post("/pay", async (req, res) => {
         transaction_id: resp.data.transaction_id || null,
         transaction_code: null,
         amount: Math.round(amount),
-        loan_amount: loan_amount || "50000",
+        loan_amount: loan_amount || amount || "N/A",
         phone: formattedPhone,
         customer_name: "N/A",
         status: "pending",
