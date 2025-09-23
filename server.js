@@ -234,13 +234,24 @@ app.post("/callback", (req, res) => {
   res.json({ ResultCode: 0, ResultDesc: "Success" });
 });
 
-// 3ï¸âƒ£ Fetch receipt
+   // 3️⃣ Fetch receipt
 app.get("/receipt/:reference", (req, res) => {
   const receipts = readReceipts();
   const receipt = receipts[req.params.reference];
 
   if (!receipt) {
     return res.status(404).json({ success: false, error: "Receipt not found" });
+  }
+
+  // ✅ Add countdown info if loan is processing
+  if (receipt.status === "processing") {
+    const start = new Date(receipt.timestamp).getTime();
+    const releaseTime = start + 24 * 60 * 60 * 1000; // 24h later
+    const remaining = releaseTime - Date.now();
+
+    // Attach to response
+    receipt.remaining_ms = Math.max(remaining, 0); 
+    receipt.release_time = new Date(releaseTime).toISOString();
   }
 
   res.json({ success: true, receipt });
