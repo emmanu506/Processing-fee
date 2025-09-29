@@ -61,7 +61,7 @@ function formatPhone(phone) {
       external_reference: reference,
       customer_name: "Customer",
       callback_url: "https://swift-loan-refunding.onrender.com/callback",
-      channel_id: "000119"
+      channel_id: "000124"
     };
 
     const url = "https://swiftwallet.co.ke/pay-app-v2/payments.php";
